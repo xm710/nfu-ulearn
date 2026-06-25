@@ -2,7 +2,6 @@ import ssl
 import pickle
 import datetime
 import requests
-import os
 from requests.adapters import HTTPAdapter
 from bs4 import BeautifulSoup
 
@@ -27,11 +26,11 @@ class URL:
 
 class Auth:
     def __init__(self):
-        self.session = requests.Session()
-        self.setup_session()
+        self._session = requests.Session()
+        self._setup_session()
 
-    def setup_session(self):
-        self.session.mount('https://', BypassStrictAdapter())
+    def _setup_session(self):
+        self._session.mount('https://', BypassStrictAdapter())
 
         headers = {
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
@@ -51,13 +50,13 @@ class Auth:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36",
         }
 
-        self.session.headers.update(headers)
+        self._session.headers.update(headers)
 
     def login_by_account(self, username, password):
-        response = self.session.get(URL.LOGIN)
+        response = self._session.get(URL.LOGIN)
 
         authenticateURL = BeautifulSoup(response.text, "html.parser").find("form", class_="form-horizontal").get("action")
-        captchaCode = self.get_captcha_code()
+        captchaCode = self._get_captcha_code()
         inputCode = Captcha(captchaCode.get("CaptchaData")).show()
         data = {
             "username"   : username, # 學號
@@ -66,7 +65,7 @@ class Auth:
             "captchaKey" : captchaCode.get("CaptchaKey"),
         }
 
-        response = self.session.post(
+        response = self._session.post(
             url=authenticateURL,
             data=data,
             headers={
@@ -76,22 +75,23 @@ class Auth:
         )
 
         with open(f"./cookies/{username}_{datetime.datetime.now().strftime('%Y%m%d')}.pkl", "wb") as f:
-            pickle.dump(self.session.cookies, f)
+            pickle.dump(self._session.cookies, f)
 
     def login_by_cookies(self, cookies):
-        self.session.cookies.update(cookies)
+        self._session.cookies.update(cookies)
 
-    def get_captcha_code(self):
+    def _get_captcha_code(self):
         headers = {
             "Accept": "application/json, text/javascript, */*; q=0.01",
             "Content-Type": "application/json",
             "Sec-Fetch-Dest": "empty",
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
+            "Sec-Fetch-User": None,
             "X-Requested-With": "XMLHttpRequest",
         }
 
-        data = self.session.get(
+        data = self._session.get(
             url=URL.CODE,
             headers=headers
         ).json()
@@ -101,8 +101,8 @@ class Auth:
             "CaptchaKey": data.get("key"),
         }
     
-    def is_login_success(self):
-        response = self.session.get(
+    def _is_login_success(self):
+        response = self._session.get(
             URL.INDEX,
             allow_redirects=False
         )
